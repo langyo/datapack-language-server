@@ -113,7 +113,7 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
 
     readonly identity = 'nbtTag'
 
-    //istanbul ignore next
+    /* istanbul ignore next */
     constructor(
         type: NbtTagTypeName | NbtTagTypeName[] = [
             'compound', 'list', 'byte_array', 'int_array', 'long_array',
@@ -121,7 +121,8 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
         ],
         private readonly category: 'blocks' | 'entities' | 'items',
         private readonly id: string | undefined = undefined,
-        private readonly nbtSchema = VanillaNbtSchema
+        private readonly nbtSchema = VanillaNbtSchema,
+        private readonly isPredicate = false
     ) {
         super()
         if (type instanceof Array) {
@@ -216,13 +217,18 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                                     return value
                                 }
                             }
+                            const result = walker
+                                .getCompletionsAndWarnings(clonedReader, this.cursor, this.manager, this.config, this.cache, { isPredicate: this.isPredicate })
                             ans.completions.push(
-                                ...walker
-                                    .getCompletions(clonedReader, this.cursor, this.manager, this.config, this.cache)
+                                ...result
+                                    .completions
                                     .map(v => ({
                                         ...v,
                                         label: getLabel(v.label)
                                     }))
+                            )
+                            ans.errors.push(
+                                ...result.warnings
                             )
                         }
                     }
@@ -388,7 +394,7 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
         }
     }
 
-    private parsePrimitiveArray(reader: StringReader, _walker?: NbtSchemaWalker,
+    private parsePrimitiveArray(reader: StringReader, walker?: NbtSchemaWalker,
         specifiedType: 'byte_array' | 'int_array' | 'long_array' | null = null):
         ArgumentParserResult<NbtByteArrayTag | NbtIntArrayTag | NbtLongArrayTag> {
         const ans: ArgumentParserResult<NbtByteArrayTag | NbtIntArrayTag | NbtLongArrayTag> = {
@@ -424,7 +430,12 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                 .skipWhiteSpace()
             while (reader.canRead() && reader.peek() !== ']') {
                 const start = reader.cursor
-                const result = this.parsePrimitiveTag(reader)
+                const result = this.parsePrimitiveTag(
+                    reader,
+                    /* istanbul ignore next */
+                    (walker && NbtSchemaWalker.isListNode(walker.read())) ? walker.clone().goAnchor('[]') : undefined,
+                    (walker && walker.read().isColor)
+                )
                 combineArgumentParserResult(ans, result)
                 reader.skipWhiteSpace()
                 if (reader.peek() === ',') {
@@ -498,11 +509,6 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                 const end = reader.cursor
                 combineArgumentParserResult(ans, result)
                 reader.skipWhiteSpace()
-                if (reader.peek() === ',') {
-                    reader
-                        .skip()
-                        .skipWhiteSpace()
-                }
                 ans.data.push(result.data)
                 if (!ans.data[NbtContentTagType]) {
                     ans.data[NbtContentTagType] = result.data[NbtTagType]
@@ -515,6 +521,13 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                         )
                     )
                 }
+                if (reader.peek() === ',') {
+                    reader
+                        .skip()
+                        .skipWhiteSpace()
+                    continue
+                }
+                break
             }
             reader
                 .expect(']')
@@ -526,13 +539,14 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
         }
     }
 
-    private parsePrimitiveTag(reader: StringReader, walker?: NbtSchemaWalker): ArgumentParserResult<NbtTag> {
+    private parsePrimitiveTag(reader: StringReader, walker?: NbtSchemaWalker, isColor?: boolean): ArgumentParserResult<NbtTag> {
         const ans: ArgumentParserResult<NbtTag> = {
             data: getNbtStringTag(''),
             errors: [],
             cache: {},
             completions: []
         }
+        isColor = isColor || (walker && walker.read().isColor)
         if (StringReader.isQuote(reader.peek())) {
             // Parse as a quoted string.
             const quote = reader.peek()
@@ -540,10 +554,11 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                 const clonedReader = reader.clone()
                 const value = reader.readQuotedString()
                 ans.data = getNbtStringTag(value)
-                ans.completions = walker ?
-                    walker.getCompletions(clonedReader, this.cursor, this.manager, this.config, this.cache)
-                        .map(v => ({ ...v, label: escapeString(v.label, quote as any) })) :
-                    []
+                const result = walker ?
+                    walker.getCompletionsAndWarnings(clonedReader, this.cursor, this.manager, this.config, this.cache, { isPredicate: this.isPredicate }) :
+                    { completions: [], warnings: [] }
+                ans.completions = result.completions.map(v => ({ ...v, label: escapeString(v.label, quote as any) }))
+                ans.errors.push(...result.warnings)
             } catch (p) {
                 ans.data = getNbtStringTag('')
                 ans.errors.push(p)
@@ -565,6 +580,20 @@ export default class NbtTagArgumentParser extends ArgumentParser<NbtTag> {
                             const [pattern, func] = NbtTagArgumentParser.Patterns[type]
                             if (pattern.test(value)) {
                                 ans.data = func(value)
+                                if (isColor) {
+                                    const num = Number(value)
+                                    const r = ((num >> 16) & 255) / 255
+                                    const g = ((num >> 8) & 255) / 255
+                                    const b = (num & 255) / 255
+                                    ans.cache = {
+                                        colors: {
+                                            [`${r} ${g} ${b} 1`]: {
+                                                def: [],
+                                                ref: [{ start, end: reader.cursor }]
+                                            }
+                                        }
+                                    }
+                                }
                                 return ans
                             }
                         }

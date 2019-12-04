@@ -1,4 +1,4 @@
-import { CompletionItem } from 'vscode-languageserver'
+import { CompletionItem, DiagnosticSeverity } from 'vscode-languageserver'
 import { ClientCache } from '../types/ClientCache'
 import { NbtNoPropertySchemaNode, NbtCompoundSchemaNode, NbtRootSchemaNode, NbtListSchemaNode, NbtRefSchemaNode, NbtSchemaNode, NbtSchemaNodeWithType, NbtSchema, ValueList } from '../types/VanillaNbtSchema'
 import { NbtTagTypeName } from '../types/NbtTag'
@@ -8,6 +8,8 @@ import LineParser from '../parsers/LineParser'
 import StringReader from './StringReader'
 import Manager from '../types/Manager'
 import ArgumentParser from '../parsers/ArgumentParser'
+import ParsingError from '../types/ParsingError'
+import clone = require('clone')
 
 type SuggestionNode =
     | string
@@ -15,6 +17,7 @@ type SuggestionNode =
     | ParserSuggestionNode
 type DocedSuggestionNode = { description?: string, value?: string }
 type ParserSuggestionNode = { parser: string, params?: any }
+type Variables = { isPredicate: boolean }
 
 export default class NbtSchemaWalker {
     constructor(private readonly nbtSchema: NbtSchema) { }
@@ -136,7 +139,7 @@ export default class NbtSchemaWalker {
                     )
                 } else if (NbtSchemaWalker.isCompoundNode(node)) {
                     if (node.child_ref) {
-                        const ansNode = JSON.parse(JSON.stringify(node))
+                        const ansNode = clone(node)
                         delete ansNode.child_ref
                         for (const refPath of node.child_ref) {
                             const subWalker = walker
@@ -226,36 +229,75 @@ export default class NbtSchemaWalker {
         return ans
     }
 
-    getCompletions(reader: StringReader, cursor = -1, manager: Manager<ArgumentParser<any>>, config = VanillaConfig, cache: ClientCache = {}): CompletionItem[] {
+    getCompletionsAndWarnings(
+        reader: StringReader, cursor = -1, manager: Manager<ArgumentParser<any>>,
+        config = VanillaConfig, cache: ClientCache = {},
+        variables: Variables = { isPredicate: false }
+    ): { completions: CompletionItem[], warnings: ParsingError[] } {
         const isParserNode =
             (value: any): value is ParserSuggestionNode => typeof value.parser === 'string'
-        const ans: CompletionItem[] = []
+        const ans: { completions: CompletionItem[], warnings: ParsingError[] } = { completions: [], warnings: [] }
         const suggestions: SuggestionNode[] = this.read().suggestions ? this.read().suggestions as SuggestionNode[] : []
         suggestions.forEach(
             v => {
                 if (typeof v === 'string') {
                     if (reader.cursor === cursor) {
-                        ans.push({ label: v })
+                        ans.completions.push({ label: v })
                     }
                 } else if (isParserNode(v)) {
                     const out = { cursor }
                     const subReader = new StringReader(reader.readString(out))
+
+                    // Replace variables in v.params.
+                    /* istanbul ignore next */
+                    if (v.params) {
+                        const bakParams = [...v.params]
+                        v.params = []
+                        for (const variable in variables) {
+                            /* istanbul ignore next */
+                            if (variables.hasOwnProperty(variable)) {
+                                for (const param of bakParams) {
+                                    if (param === `%${variable}%`) {
+                                        v.params.push(variables[variable as keyof Variables])
+                                    } else {
+                                        v.params.push(param)
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (v.parser === '#') {
                         // LineParser
                         const parser = new LineParser(...v.params)
-                        const { completions } = parser.parse(subReader, out.cursor, manager).data
+                        const { completions, errors } = parser.parse(subReader, out.cursor, manager).data
                         if (completions) {
-                            ans.push(...completions)
+                            ans.completions.push(...completions)
+                        }
+                        // istanbul ignore next
+                        if (errors) {
+                            ans.warnings.push(...errors.map(
+                                v => new ParsingError({
+                                    start: v.range.start + cursor - out.cursor,
+                                    end: v.range.end + cursor - out.cursor
+                                }, v.message, true, DiagnosticSeverity.Hint)
+                            ))
                         }
                     } else {
                         // Regular ArgumentParser
                         const parser = manager.get(v.parser, v.params)
-                        const { completions } = parser.parse(subReader, out.cursor, manager, config, cache)
-                        ans.push(...completions)
+                        const { completions, errors } = parser.parse(subReader, out.cursor, manager, config, cache)
+                        ans.completions.push(...completions)
+                        ans.warnings.push(...errors.map(
+                            v => new ParsingError({
+                                start: v.range.start + cursor - out.cursor,
+                                end: v.range.end + cursor - out.cursor
+                            }, v.message, true, DiagnosticSeverity.Hint)
+                        ))
                     }
                 } else {
                     if (reader.cursor === cursor) {
-                        ans.push({ label: v.value as string, documentation: v.description })
+                        ans.completions.push({ label: v.value as string, documentation: v.description })
                     }
                 }
             }

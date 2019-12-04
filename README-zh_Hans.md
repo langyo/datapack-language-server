@@ -17,7 +17,7 @@ Datapack Helper Plus，简称 DHP，中文名大憨批，是 [pca006132](https:/
 
 点这个图标就可以从网页安装：[![VSCode Marketplace](https://img.shields.io/visual-studio-marketplace/v/SPGoding.datapack-language-server.svg?logo=visual-studio-code&style=flat-square)](https://marketplace.visualstudio.com/items?itemName=SPGoding.datapack-language-server)。
 
-或者，您也可以直接打开 VSCode，按 Ctrl + Shift + P，删掉里面的 `>`，复制粘贴 `ext install spgoding.datapack-language-server` 并回车。
+或者，您也可以直接打开 VSCode，按 Ctrl + P，复制粘贴 `ext install spgoding.datapack-language-server` 并回车。
 
 # 注意
 
@@ -38,19 +38,27 @@ Datapack Helper Plus，简称 DHP，中文名大憨批，是 [pca006132](https:/
 
 ## 自动补全
 
-当您敲击了以下任意字符时，大憨批将自动计算补全提示：`[' ', ',', '{', '[', '=', ':', '/', '!', "'", '"', '.']`。此外您也可以使用 Ctrl + Space 快捷键（或其他自行设定的按键）来手动触发自动补全。不过请注意：并非所有地方都能提供自动补全。通常只在参数或文本的开头能够提供。
+当您敲击了以下任意字符时，大憨批将自动计算补全提示：`[' ', ',', '{', '[', '=', ':', '/', '!', "'", '"', '.', '@']`。此外您也可以使用 Ctrl + Space 快捷键（或其他自行设定的按键）来手动触发自动补全。不过请注意：并非所有地方都能提供自动补全。通常只在参数或文本的开头能够提供。
 
 大憨批能够提供简单命令的自动补全：
 ![simple-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/simple-completions.gif)
 
-复杂的 NBT 标签的自动补全：
+复杂的 NBT 标签的自动补全（感谢 MrYurihi、Levertion 与 Bassab03 贡献的 [mc-nbt-paths](https://github.com/MrYurihi/mc-nbt-paths)）：
 ![nbt-tag-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/nbt-tag-completions.gif)
 
 以及 NBT 路径的自动补全：
 ![nbt-path-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/nbt-path-completions.gif)
 
+以下特性还在制作中，很帅，但没做好：
+
 **甚至是物品标签里面的 JSON 文本里面的命令里面的 NBT**的自动补全，返回的结果将会自动进行转义：
 ![ohhhh-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/ohhhh-completions.gif)
+
+## 代码片段
+
+大憨批提供了一些有用的代码片段。有关代码片段是什么可以参考 [VSCode 的官方文档](https://code.visualstudio.com/docs/editor/userdefinedsnippets)。大憨批与 VSCode 均提供了让你自定义代码片段的功能，并且由于大憨批基于 VSCode，它们定义代码片段的语法也完全一致。对于 mcfunction 函数文件来说，由大憨批添加的代码片段将只会在光标位于命令开头时出现在补全提示的列表中，而由 VSCode 的 `Code/User/snippets/mcfunction.json` 文件添加的代码片段则会在任何情况下都能出现在补全提示中。如果你想用 VSCode 来自定义代码片段，看[他们的官方文档](https://code.visualstudio.com/docs/editor/userdefinedsnippets)；如果你想用大憨批来自定义代码片段，则需要看本文的[配置](#配置)部分.
+
+![code-snippets](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/code-snippets.gif)
 
 ## 定义注释
 
@@ -82,9 +90,9 @@ execute if score @s test matches 5 run say 5
 
 ## 颜色信息
 
-大憨批能够为 `dust` 粒子提供颜色信息，这是真正的憨批行为。你可以把光标悬浮在颜色上几秒钟，这样就能直接更改颜色了。
+大憨批能够为 `dust` 粒子以及一些 NBT 标签提供颜色信息，这是真正的憨批行为。你可以把光标悬浮在颜色上几秒钟，这样就能直接更改颜色了。
 
-![color-particle](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/color-particle.gif)
+![color-information](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/color-information.gif)
 
 ## 悬浮信息
 
@@ -126,17 +134,25 @@ execute if score @s test matches 5 run say 5
 
 ## 格式化与校验
 
-不好意思，没做。
+您可以通过按下 Shift + Alt + F 或其他自行设定的快捷键来格式化当前文档。
+
+您可以在配置中设置一些格式化与校验的规则。
+
+**警告**：重命名可能导致您的函数内容损坏，请及时备份。使用风险请自行承担。格式化功能默认是禁用的，如果您要使用，应当在设置界面中勾选 `datapackLanguageServer.lint.enableFormatting`。
+
+![formatting](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/formatting.gif)
+
+## 配置
+
+使用 Ctrl + `,`（或其他绑定的快捷键）来打开 VSCode 的设置页，并搜索 `datapacklanguageserver` 来查看所有由大憨批提供的配置选项。通过修改这些选项，你可以自行添加代码片段、设置格式化与校验偏好，以及修改运行环境的相关信息。这些选项既可以是为当前用户设置的，也可以是为当前工作空间设置的。有关修改配置选项的具体内容请查看 [VSCode 的官方文档](https://code.visualstudio.com/docs/getstarted/settings)。
 
 # 贡献者
 
-感谢这些可爱的人们对本项目的各种帮助。为更新及时，请查看 [README.md](https://github.com/SPGoding/datapack-language-server#contributors) 中的相应部分。下方仅放置截图作为预览。
-
-[attachimg]1411491[/attachimg]
+感谢这些可爱的人们对本项目的各种帮助。为更新及时，请查看 [README.md](https://github.com/SPGoding/datapack-language-server#contributors) 中的相应部分。
 
 # Q：大憨批就是个垃圾！
 
-请把您意见、建议、遇到的问题等发布在 [GitHub issues](https://github.com/SPGoding/datapack-language-server/issues)，或直接回复在论坛发布帖之下。发布在 GitHub 有利于本人对其进行追踪，并便于将您加入到贡献者列表中；发布在论坛有利于我个人给予您相应积分奖励。如果您乐意，当然可以**在两处都进行反馈**。
+请把您的意见、建议、遇到的问题等发布在 [GitHub issues](https://github.com/SPGoding/datapack-language-server/issues)，或直接回复在论坛发布帖之下。发布在 GitHub 有利于本人对其进行追踪，并便于将您加入到贡献者列表中；发布在论坛有利于我个人给予您相应积分奖励。如果您乐意，当然可以**在两处都进行反馈**。
 
 # Q：大憨批真好用！
 

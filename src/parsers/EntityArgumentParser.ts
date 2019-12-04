@@ -1,4 +1,3 @@
-import { arrayToCompletions } from '../utils/utils'
 import { ArgumentParserResult, combineArgumentParserResult } from '../types/Parser'
 import { getCompletions, getSafeCategory, ClientCache } from '../types/ClientCache'
 import ArgumentParser from './ArgumentParser'
@@ -10,6 +9,7 @@ import ParsingError from '../types/ParsingError'
 import StringReader from '../utils/StringReader'
 import Identity from '../types/Identity'
 import MapAbstractParser from './MapAbstractParser'
+import VanillaNbtSchema from '../types/VanillaNbtSchema'
 
 export default class EntityArgumentParser extends ArgumentParser<Entity> {
     readonly identity = 'entity'
@@ -22,7 +22,8 @@ export default class EntityArgumentParser extends ArgumentParser<Entity> {
     constructor(
         private readonly amount: 'single' | 'multiple',
         private readonly type: 'players' | 'entities',
-        private readonly greedy = false
+        private readonly greedy = false,
+        private readonly schema = VanillaNbtSchema
     ) { super() }
 
     parse(reader: StringReader, cursor = -1, manager: Manager<ArgumentParser<any>>, config = VanillaConfig, cache: ClientCache = {}): ArgumentParserResult<Entity> {
@@ -146,19 +147,24 @@ export default class EntityArgumentParser extends ArgumentParser<Entity> {
                         .skip()
                         .skipWhiteSpace()
                 }
+                let isValueEmpty = false
+                if (reader.peek() === ',' || reader.peek() === ']') {
+                    isValueEmpty = true
+                }
                 const result = parser.parse(reader, this.cursor, this.manager, this.config, this.cache)
-                if (result.data) {
-                    if (isNegative) {
-                        pushSafely(keyNeg, result)
-                    } else {
-                        pushSafely(key, result)
-                        if (key === 'type') {
-                            const id = (result.data as Identity).toString()
-                            if (id === 'minecraft:player') {
-                                containsNonPlayer = false
-                            } else {
-                                containsNonPlayer = true
-                            }
+                if (isValueEmpty) {
+                    result.errors = []
+                }
+                if (isNegative) {
+                    pushSafely(keyNeg, result)
+                } else {
+                    pushSafely(key, result)
+                    if (key === 'type') {
+                        const id = (result.data as Identity).toString()
+                        if (id === 'minecraft:player') {
+                            containsNonPlayer = false
+                        } else {
+                            containsNonPlayer = true
                         }
                     }
                 }
@@ -195,8 +201,9 @@ export default class EntityArgumentParser extends ArgumentParser<Entity> {
                     } else if (key === 'name') {
                         dealWithNegativableArray(manager.get('String'), key)
                     } else if (key === 'nbt') {
-                        // TODO: NBT schema.
-                        dealWithNegativableArray(manager.get('NbtTag', ['compound', 'entities', /*TODO*/]), key)
+                        dealWithNegativableArray(manager.get('NbtTag', [
+                            'compound', 'entities', 'base', this.schema, true
+                        ]), key)
                     } else if (key === 'predicate') {
                         dealWithNegativableArray(manager.get('NamespacedID', ['$predicates']), key)
                     } else if (key === 'tag') {

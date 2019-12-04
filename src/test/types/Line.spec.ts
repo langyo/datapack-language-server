@@ -1,7 +1,8 @@
 import * as assert from 'power-assert'
 import { describe, it } from 'mocha'
-import Line, { combineLine, combineSaturatedLine, saturatedLineToLine, SaturatedLine } from '../../types/Line'
+import Line, { combineLine, combineSaturatedLine, saturatedLineToLine, SaturatedLine, lineToLintedString } from '../../types/Line'
 import ParsingError from '../../types/ParsingError'
+import { VanillaConfig } from '../../types/Config'
 
 describe('Line Tests', () => {
     describe('combineLine() Tests', () => {
@@ -123,6 +124,25 @@ describe('Line Tests', () => {
                 errors: [new ParsingError({ start: 0, end: 1 }, 'error')],
                 completions: [{ label: 'completion' }]
             })
+        })
+    })
+    describe('lineToLintedString() Tests', () => {
+        it('Should return correctly', () => {
+            const line = {
+                args: [
+                    {
+                        data: 'execute',
+                        parser: 'test'
+                    },
+                    {
+                        data: 'if',
+                        parser: 'test'
+                    }
+                ],
+                cache: {}, errors: [], completions: [], hint: { fix: [], options: [] }
+            }
+            const actual = lineToLintedString(line, VanillaConfig.lint)
+            assert(actual === 'execute if')
         })
     })
 })

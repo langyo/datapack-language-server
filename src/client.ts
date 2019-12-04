@@ -34,8 +34,8 @@ export function activate(context: ExtensionContext) {
     const clientOptions: LanguageClientOptions = {
         // Register the server for mcfunction documents
         documentSelector: [
-            { language: 'mcfunction' },
-            { language: 'mcfunction-snapshot' }
+            { scheme: 'file', language: 'mcfunction' },
+            { scheme: 'file', language: 'mcfunction-snapshot' }
         ],
         synchronize: {
             fileEvents: []
@@ -44,9 +44,6 @@ export function activate(context: ExtensionContext) {
 
     if (workspace.workspaceFolders) {
         (clientOptions.synchronize as any).fileEvents.push(
-            workspace.createFileSystemWatcher(
-                new RelativePattern(workspace.workspaceFolders[0], '.datapackrc.json')
-            ),
             workspace.createFileSystemWatcher(
                 new RelativePattern(workspace.workspaceFolders[0], 'data/*/{advancements,loot_tables,predicates,recipes}/**/*.json')
             ),
@@ -60,8 +57,8 @@ export function activate(context: ExtensionContext) {
 
     // Create the language client and start the client.
     client = new LanguageClient(
-        'mcfunctionLanguageServer',
-        'MCFunction Language Server',
+        'datapackLanguageServer',
+        'Datapack Language Server',
         serverOptions,
         clientOptions
     )

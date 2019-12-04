@@ -49,12 +49,12 @@
       ]
     },
     {
-      "login": "switefaster",
-      "name": "switefaster",
-      "avatar_url": "https://avatars2.githubusercontent.com/u/19944539?v=4",
-      "profile": "https://github.com/switefaster",
+      "login": "BlackNight0315",
+      "name": "BlackNight0315",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/4495596?v=4",
+      "profile": "https://github.com/BlackNight0315",
       "contributions": [
-        "financial"
+        "design"
       ]
     },
     {
@@ -62,6 +62,17 @@
       "name": "MarsCloud",
       "avatar_url": "https://avatars2.githubusercontent.com/u/43104628?v=4",
       "profile": "https://github.com/MarsCloud",
+      "contributions": [
+        "code",
+        "financial",
+        "bug"
+      ]
+    },
+    {
+      "login": "switefaster",
+      "name": "switefaster",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/19944539?v=4",
+      "profile": "https://github.com/switefaster",
       "contributions": [
         "financial"
       ]
@@ -89,6 +100,33 @@
       "name": "pca006132",
       "avatar_url": "https://avatars3.githubusercontent.com/u/12198657?v=4",
       "profile": "https://github.com/pca006132",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "Arcensoth",
+      "name": "Arcensoth",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/1885643?v=4",
+      "profile": "https://arcensoth.github.io",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "MulverineX",
+      "name": "MulverineX",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/12068027?v=4",
+      "profile": "http://mulverinex.github.io/home",
+      "contributions": [
+        "ideas"
+      ]
+    },
+    {
+      "login": "fedpol1",
+      "name": "fedpol1",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/54010140?v=4",
+      "profile": "https://github.com/fedpol1",
       "contributions": [
         "ideas"
       ]

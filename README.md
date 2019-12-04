@@ -34,19 +34,27 @@ You can get hints about the arguments of commands while typing.
 
 ## Completions
 
-The extension can compute completions as you typing commands. Completions will automatically show if you commit one of these characters: `[' ', ',', '{', '[', '=', ':', '/', '!', "'", '"', '.']`. Alternatively you can use Ctrl + Space (or other configured hotkey) to show completions manually. Note: completions are not available everywhere. Typically only the beginnings of arguments and literals are supported.
+The extension can compute completions as you typing commands. Completions will automatically show if you commit one of these characters: `[' ', ',', '{', '[', '=', ':', '/', '!', "'", '"', '.', '@']`. Alternatively you can use Ctrl + Space (or other configured hotkey) to show completions manually. Note: completions are not available everywhere. Typically only the beginnings of arguments and literals are supported.
 
 DHP can provide completions for simple commands:
 ![simple-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/simple-completions.gif)
 
-For more complex NBT tags, with the help from [mc-nbt-paths](github.com/MrYurihi/mc-nbt-paths) contributed by MrYurihi, Levertion and Bassab03:
+For more complex NBT tags, with the help from [mc-nbt-paths](https://github.com/MrYurihi/mc-nbt-paths) contributed by MrYurihi, Levertion and Bassab03:
 ![nbt-tag-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/nbt-tag-completions.gif)
 
-And also NBT paths, with the help from [mc-nbt-paths](github.com/MrYurihi/mc-nbt-paths) contributed by MrYurihi, Levertion and Bassab03:
+And also NBT paths:
 ![nbt-path-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/nbt-path-completions.gif)
 
-FOR NBTS IN COMMANDS IN JSON TEXT COMPONENTS IN ITEM TAG NBTS, HANDLING THE ANOYYING ESCAPE AUTOMATICALLY FOR YOU, though this shitty feature doesn't always work well:
+The following cool completion feature is still work-in-progress:
+
+FOR NBTS IN COMMANDS IN JSON TEXT COMPONENTS IN ITEM TAG NBTS, HANDLING THE ANOYYING ESCAPE AUTOMATICALLY FOR YOU:
 ![ohhhh-completions](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/ohhhh-completions.gif)
+
+## Code Snippets
+
+DHP provides some helpful code snippets. See [VSCode's official docs](https://code.visualstudio.com/docs/editor/userdefinedsnippets) to learn more about code snippets. Both DHP and VSCode allow you to custom your code snippets, and they use exactly the same syntax because DHP is based on VSCode. For mcfunction files, code snippets added by DHP will be shown in the completions list only when the cursor is at the beginning of a command, however snippets added by VSCode's `Code/User/snippets/mcfunction.json` file will be shown everywhere in the file. If you want to custom your code snippets via VSCode, see [their official docs](https://code.visualstudio.com/docs/editor/userdefinedsnippets). If you want to custom snippets via DHP, see the [Configuration Settings section](#Configuration%20Settings).
+
+![code-snippets](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/code-snippets.gif)
 
 ## Definition Comments
 
@@ -78,9 +86,9 @@ execute if score @s test matches 5 run say 5
 
 ## Color Information
 
-DHP will display colors for `dust` particles. You can change the color by hovering your cursor on it.
+DHP will display colors for `dust` particles and `color` tags in NBTs. You can change the color by hovering your cursor on it.
 
-![color-particle](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/color-particle.gif)
+![color-information](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/color-information.gif)
 
 ## Hover Information
 
@@ -126,278 +134,17 @@ Additionally, if you rename a namespaced ID with file definition (e.g. the ID fo
 
 ## Formatting and Linting
 
-This is WIP.
+You can format the current function by pressing Shift + Alt + F or other configured hotkey.
 
-Your command will be formatted after you commit `\n` character. Alternatively, you can trigger it manually by pressing Alt + Shift + F or other configured hotkey.
+There are several linting rules you can set in the configuration settings.
 
-There are several linting rules you can set in the configuration file.
+**WARNING**: your input can be accidentally lost by using this feature. Use it at your own risk. This feature is disabled by default. You can enable this feature by changing the `datapackLanguageServer.lint.enableFormatting` setting.
 
-**WARNING**: your input can be accidentally lost by using this feature. Use it at your own risk. This feature is disabled by default.
+![formatting](https://raw.githubusercontent.com/SPGoding/datapack-language-server/master/img/formatting.gif)
 
-### blockStateAppendSpaceAfterComma: `boolean`
+## Configuration Settings
 
-Whether to append spaces after commas in block states or not.  
-@default `false`
-
-### blockStatePutSpacesAroundEqualSign: `boolean`
-
-Whether to put spaces around equal signs in block states or not.  
-@default `false`
-
-### blockStateSortKeys: `boolean`
-
-Whether to sort the keys in block states or not.  
-@default `false`
-
-### entitySelectorAppendSpaceAfterComma: `boolean`
-
-Whether to append spaces after commas in entity selectors or not.  
-@default `false`
-
-### entitySelectorPutSpacesAroundEqualSign: `boolean`
-
-Whether to put spaces around equal signs in entity selectors or not.  
-@default `false`
-
-### entitySelectorKeyOrder: `(keyof SelectorParsedArgument)[]`
-
-In which order the arguments in entity selectors should be. The default order is based on the research
-by vdvman1 at https://minecraftcommands.github.io/commanders-handbook/selector-argument-order.  
-@default
-```json
-[
-    "sort",
-    "limit",
-    "type",
-    "gamemode",
-    "gamemodeNeg",
-    "level",
-    "team",
-    "teamNeg",
-    "typeNeg",
-    "tag",
-    "tagNeg",
-    "name",
-    "nameNeg",
-    "predicate",
-    "predicateNeg",
-    "scores",
-    "advancements",
-    "nbt",
-    "nbtNeg",
-    "x",
-    "y",
-    "z",
-    "dx",
-    "dy",
-    "dz",
-    "distance",
-    "x_rotation",
-    "y_rotation"
-]
-```
-
-### quoteType: `'always single' | 'always double' | 'prefer single' | 'prefer double'`
-
-Quotes used in NBT strings and phrase strings.  
-`'always single'`: Always use single quotes.  
-`'always double'`: Always use double quotes.  
-`'prefer single'`: Always use single quotes, unless there are single quotes in the string.  
-`'prefer double'`: Always use double quotes, unless there are double quotes in the string.  
-@default `'prefer double'`  
-
-### quoteEntitySelectorKeys: `boolean`
-
-When the keys in entity selectors should be quoted.  
-`true`: Always.  
-`false`: Never.  
-@default `false`
-
-### quoteSnbtStringKeys: `boolean`
-
-When the string keys in SNBTs should be quoted.  
-`true`: Always.  
-`false`: Only when there are special characters in the string.  
-@default `false`
-
-### quoteNbtStringValues: `boolean`
-
-When the string values in SNBTs should be quoted.  
-`true`: Always.  
-`false`: Only when there are special characters in the string.  
-@default `true`
-
-### snbtAppendSpaceAfterColon: `boolean`
-
-Whether to append spaces after colons in SNBTs or not.  
-@default `true`
-
-### snbtAppendSpaceAfterComma: `boolean`
-
-Whether to append spaces after commas in SNBT or not.  
-@default `true`
-
-### snbtAppendSpaceAfterSemicolon: `boolean`
-
-Whether to append spaces after semicolons in SNBTs or not.  
-@default `true`
-
-### snbtByteSuffix: `'b' | 'B'`
-
-The suffix used for TAG_Byte in SNBTs.  
-@default `'b'`
-
-### snbtUseBooleans: `boolean`
-
-Whether `0b` and `1b` should be represents by `false` and `true` in SNBTs or not.  
-@default `false`
-
-### snbtShortSuffix: `'s' | 'S'`
-
-The suffix used for TAG_Short in SNBTs.  
-@default `'s'`
-
-### snbtLongSuffix: `'l' | 'L'`
-
-The suffix used for TAG_Long in SNBTs.  
-@default `'L'`
-
-### snbtFloatSuffix: `'f' | 'F'`
-
-The suffix used for TAG_Float in SNBTs.  
-@default `'f'`
-
-### snbtDoubleSuffix: `'d' | 'D'`
-
-The suffix used for TAG_Double in SNBTs.  
-@default `'d'`
-
-### snbtOmitDoubleSuffix: `boolean`
-
-Whether to omit the suffix of double numbers when possible in SNBTs or not.  
-@default `false`
-
-### snbtKeepDecimalPlace: `boolean`
-
-Whether to keep at least one decimal place in SNBTs or not.  
-@default `true`
-
-### snbtSortKeys: `boolean`
-
-Whether to sort keys in compound tags in SNBTs or not.  
-@default `false`
-
-### timeOmitTickUnit: boolean
-
-Whether to omit the unit of tick (`t`) in time arguments.  
-@default `false`
-
-### nameOfObjectives: `NamingConventionConfig`
-
-The naming convension for scoreboard objectives.  
-@default `'whatever'`
-
-### nameOfSnbtCompoundTagKeys: `NamingConventionConfig`
-
-The naming convension for compound tag keys in SNBTs.  
-@default `'whatever'`
-
-### nameOfTags: `NamingConventionConfig`
-
-The naming convension for scoreboard tags.  
-@default `'whatever'`
-
-### nameOfTeams: `NamingConventionConfig`
-
-The naming convension for teams.  
-@default `'whatever'`
-
-### strictBossbarCheck: boolean
-
-Whether to throw warnings for undefined bossbars.  
-@default `false`
-
-### strictStorageCheck: boolean
-
-Whether to throw warnings for undefined data storages.  
-@default `false`
-
-### strictObjectiveCheck: boolean
-
-Whether to throw warnings for undefined objectives.  
-@default `false`
-
-### strictTagCheck: boolean
-
-Whether to throw warnings for undefined tags.  
-@default `false`
-
-### strictTeamCheck: boolean
-
-Whether to throw warnings for undefined teams.  
-@default `false`
-
-### strictAdvancementCheck: boolean
-
-Whether to throw warnings for advancements which don't exist in your workspace.  
-@default `false`
-
-### strictFunctionCheck: boolean
-
-Whether to throw warnings for functions which don't exist in your workspace.  
-@default `false`
-
-### strictLootTableCheck: boolean
-
-Whether to throw warnings for loot tables which don't exist in your workspace.  
-@default `false`
-
-### strictPredicateCheck: boolean
-
-Whether to throw warnings for predicates which don't exist in your workspace.  
-@default `false`
-
-### strictRecipeCheck: boolean
-
-Whether to throw warnings for recipes which don't exist in your workspace.  
-@default `false`
-
-### strictBlockTagCheck: boolean
-
-Whether to throw warnings for block tags which don't exist in your workspace.  
-@default `false`
-
-### strictEntityTypeTagCheck: boolean
-
-Whether to throw warnings for entity type tags which don't exist in your workspace.  
-@default `false`
-
-### strictFluidTagCheck: boolean
-
-Whether to throw warnings for fluid tags which don't exist in your workspace.  
-@default `false`
-
-### strictFunctionTagCheck: boolean
-
-Whether to throw warnings for function tags which don't exist in your workspace.  
-@default `false`
-
-### strictItemTagCheck: boolean
-
-Whether to throw warnings for item tags which don't exist in your workspace.  
-@default `false`
-
-### omitDefaultNamespace: boolean
-
-Whether to omit default namespace (`minecraft`) in namespaced IDs.  
-Does NOT affect namespaced IDs in NBT strings.  
-@default `false`
-
-<!-- ### vectorKeepDecimalPlace: boolean
-
-Whether to keep at least one decimal place in vectors or not.  
-If sets to `false`, the decimal place will still be kept to avoid center-correcting when necessary.  
-@default `true` -->
+Press Ctrl + `,` (or other configured hotkey) to open the Settings page of VSCode, and search `datapackLanguageServer` to see all the configuration settings contributed by DHP. You can add your own code snippets, set the lint preferences and environment information to meet your needs. These config can be changed for the current user or the workspace. See [VSCode's official docs](https://code.visualstudio.com/docs/getstarted/settings) to learn more about configuring settings.
 
 # Contributors
 
@@ -412,20 +159,24 @@ Thanks goes to these wonderful people ([emoji key](https://allcontributors.org/d
     <td align="center"><a href="https://github.com/MrYurihi"><img src="https://avatars3.githubusercontent.com/u/17830663?v=4" width="100px;" alt="MrYurihi"/><br /><sub><b>MrYurihi</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/commits?author=MrYurihi" title="Documentation">📖</a></td>
     <td align="center"><a href="https://github.com/Levertion"><img src="https://avatars1.githubusercontent.com/u/26185209?v=4" width="100px;" alt="Levertion"/><br /><sub><b>Levertion</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/commits?author=Levertion" title="Documentation">📖</a></td>
     <td align="center"><a href="https://github.com/Bassab03"><img src="https://avatars3.githubusercontent.com/u/21043977?v=4" width="100px;" alt="Bassab03"/><br /><sub><b>Bassab03</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/commits?author=Bassab03" title="Documentation">📖</a></td>
+    <td align="center"><a href="https://github.com/BlackNight0315"><img src="https://avatars3.githubusercontent.com/u/4495596?v=4" width="100px;" alt="BlackNight0315"/><br /><sub><b>BlackNight0315</b></sub></a><br /><a href="#design-BlackNight0315" title="Design">🎨</a></td>
+    <td align="center"><a href="https://github.com/MarsCloud"><img src="https://avatars2.githubusercontent.com/u/43104628?v=4" width="100px;" alt="MarsCloud"/><br /><sub><b>MarsCloud</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/commits?author=MarsCloud" title="Code">💻</a> <a href="#financial-MarsCloud" title="Financial">💵</a> <a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3AMarsCloud" title="Bug reports">🐛</a></td>
     <td align="center"><a href="https://github.com/switefaster"><img src="https://avatars2.githubusercontent.com/u/19944539?v=4" width="100px;" alt="switefaster"/><br /><sub><b>switefaster</b></sub></a><br /><a href="#financial-switefaster" title="Financial">💵</a></td>
-    <td align="center"><a href="https://github.com/MarsCloud"><img src="https://avatars2.githubusercontent.com/u/43104628?v=4" width="100px;" alt="MarsCloud"/><br /><sub><b>MarsCloud</b></sub></a><br /><a href="#financial-MarsCloud" title="Financial">💵</a></td>
-    <td align="center"><a href="https://github.com/PutEgg"><img src="https://avatars2.githubusercontent.com/u/15832518?v=4" width="100px;" alt="Heyu"/><br /><sub><b>Heyu</b></sub></a><br /><a href="#financial-PutEgg" title="Financial">💵</a></td>
   </tr>
   <tr>
+    <td align="center"><a href="https://github.com/PutEgg"><img src="https://avatars2.githubusercontent.com/u/15832518?v=4" width="100px;" alt="Heyu"/><br /><sub><b>Heyu</b></sub></a><br /><a href="#financial-PutEgg" title="Financial">💵</a></td>
     <td align="center"><a href="https://github.com/RicoloveFeng"><img src="https://avatars1.githubusercontent.com/u/44725122?v=4" width="100px;" alt="RicoloveFeng"/><br /><sub><b>RicoloveFeng</b></sub></a><br /><a href="#financial-RicoloveFeng" title="Financial">💵</a></td>
     <td align="center"><a href="https://github.com/pca006132"><img src="https://avatars3.githubusercontent.com/u/12198657?v=4" width="100px;" alt="pca006132"/><br /><sub><b>pca006132</b></sub></a><br /><a href="#ideas-pca006132" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://arcensoth.github.io"><img src="https://avatars3.githubusercontent.com/u/1885643?v=4" width="100px;" alt="Arcensoth"/><br /><sub><b>Arcensoth</b></sub></a><br /><a href="#ideas-Arcensoth" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="http://mulverinex.github.io/home"><img src="https://avatars2.githubusercontent.com/u/12068027?v=4" width="100px;" alt="MulverineX"/><br /><sub><b>MulverineX</b></sub></a><br /><a href="#ideas-MulverineX" title="Ideas, Planning, & Feedback">🤔</a></td>
+    <td align="center"><a href="https://github.com/fedpol1"><img src="https://avatars3.githubusercontent.com/u/54010140?v=4" width="100px;" alt="fedpol1"/><br /><sub><b>fedpol1</b></sub></a><br /><a href="#ideas-fedpol1" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/YijunYuan"><img src="https://avatars0.githubusercontent.com/u/7012463?v=4" width="100px;" alt="Yijun Yuan"/><br /><sub><b>Yijun Yuan</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3AYijunYuan" title="Bug reports">🐛</a></td>
+  </tr>
+  <tr>
     <td align="center"><a href="https://github.com/MinecraftPeace"><img src="https://avatars2.githubusercontent.com/u/57551211?v=4" width="100px;" alt="MinecraftPeace"/><br /><sub><b>MinecraftPeace</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3AMinecraftPeace" title="Bug reports">🐛</a></td>
     <td align="center"><a href="https://github.com/K-bai"><img src="https://avatars2.githubusercontent.com/u/31344344?v=4" width="100px;" alt="K-bai"/><br /><sub><b>K-bai</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3AK-bai" title="Bug reports">🐛</a></td>
     <td align="center"><a href="https://github.com/ruhuasiyu"><img src="https://avatars2.githubusercontent.com/u/31852729?v=4" width="100px;" alt="ruhuasiyu"/><br /><sub><b>ruhuasiyu</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3Aruhuasiyu" title="Bug reports">🐛</a> <a href="#ideas-ruhuasiyu" title="Ideas, Planning, & Feedback">🤔</a></td>
     <td align="center"><a href="https://github.com/ChenCMD"><img src="https://avatars2.githubusercontent.com/u/46134240?v=4" width="100px;" alt="??"/><br /><sub><b>??</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3AChenCMD" title="Bug reports">🐛</a></td>
-  </tr>
-  <tr>
     <td align="center"><a href="https://github.com/TouchFisha"><img src="https://avatars0.githubusercontent.com/u/48653079?v=4" width="100px;" alt="TouchFisha"/><br /><sub><b>TouchFisha</b></sub></a><br /><a href="https://github.com/SPGoding/datapack-language-server/issues?q=author%3ATouchFisha" title="Bug reports">🐛</a></td>
   </tr>
 </table>
@@ -440,7 +191,6 @@ And to those who haven't told me a GitHub account:
 <!-- markdownlint-disable -->
 <table>
   <tr>
-    <td align="center"><a href="https://www.mcbbs.net/home.php?mod=space&uid=67858"><img src="https://www.mcbbs.net/uc_server/avatar.php?uid=67858&size=middle" width="100px;" alt="夜之暗夜"/><br /><sub><b>夜之暗夜</b></sub></a><br /><a href="#design-夜之暗夜" title="Design">🎨</a></td>
     <td align="center"><a href="https://www.mcbbs.net/home.php?mod=space&uid=1073895"><img src="https://www.mcbbs.net/uc_server/avatar.php?uid=1073895&size=middle" width="100px;" alt="uuu2011"/><br /><sub><b>uuu2011</b></sub></a><br /><a href="#financial-uuu2011" title="Financial">💵</a></td>
     <td align="center"><a href="https://afdian.net/u/64da395e2b6811e99c7652540025c377"><img src="https://pic.afdiancdn.com/default/avatar/default-avatar@2x.png" width="100px;" alt="爱发电用户_4vCR"/><br /><sub><b>爱发电用户_4vCR</b></sub></a><br /><a href="#financial-爱发电用户_4vCR" title="Financial">💵</a></td>
     <td align="center"><a href="https://afdian.net/u/9c5521849fb011e99ecc52540025c377"><img src="https://pic.afdiancdn.com/user/9c5521849fb011e99ecc52540025c377/avatar/5d5ebfa0c83f7a50304bb472c9d320c1_w640_h640_s69.jpg" width="100px;" alt="夏白千层心"/><br /><sub><b>夏白千层心</b></sub></a><br /><a href="#financial-夏白千层心" title="Financial">💵</a></td>
@@ -457,4 +207,4 @@ And to those who haven't told me a GitHub account:
 <!-- markdownlint-enable -->
 <!-- prettier-ignore-end -->
 
-This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind welcome!
+This project follows the [all-contributors](https://github.com/all-contributors/all-contributors) specification. Contributions of any kind are welcome!

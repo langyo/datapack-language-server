@@ -1,3 +1,40 @@
+# [v1.10.3](https://github.com/SPGoding/datapack-language-server/compare/v1.10.2...v1.10.3) (2019-11-30)
+
+## 🐛 Bug Fixes
+- [`2e5652a`](https://github.com/SPGoding/datapack-language-server/commit/2e5652a)  Fix CRLF (Issues: [`#190`](https://github.com/SPGoding/datapack-language-server/issues/190))
+
+# [v1.10.2](https://github.com/SPGoding/datapack-language-server/compare/v1.10.1...v1.10.2) (2019-11-30)
+
+## 🐛 Bug Fixes
+- [`8a7aaf9`](https://github.com/SPGoding/datapack-language-server/commit/8a7aaf9)  Fix not activating (Issues: [`#189`](https://github.com/SPGoding/datapack-language-server/issues/189))
+
+# [v1.10.1](https://github.com/SPGoding/datapack-language-server/compare/v1.10.0...v1.10.1) (2019-11-29)
+
+## 🐛 Bug Fixes
+- [`7fcd246`](https://github.com/SPGoding/datapack-language-server/commit/7fcd246)  Fix not formatting when hints or warnings exist 
+- [`c56d320`](https://github.com/SPGoding/datapack-language-server/commit/c56d320)  Fix parsing some namespaced IDs in SNBTs 
+
+## 🔒 Security Issues
+- [`832dee8`](https://github.com/SPGoding/datapack-language-server/commit/832dee8)  Fix 9 vulnerabilities
+
+# [v1.10.0](https://github.com/SPGoding/datapack-language-server/compare/v1.9.4...v1.10.0) (2019-11-29)
+
+## ✨ New Features
+- [`6d453c7`](https://github.com/SPGoding/datapack-language-server/commit/6d453c7)  Add several code snippets (Issues: [`#182`](https://github.com/SPGoding/datapack-language-server/issues/182))
+- [`389c467`](https://github.com/SPGoding/datapack-language-server/commit/389c467)  Support allCommitCharacters (Issues: [`#183`](https://github.com/SPGoding/datapack-language-server/issues/183))
+- [`3ff65aa`](https://github.com/SPGoding/datapack-language-server/commit/3ff65aa)  Add colors for NBT tags (Issues: [`#185`](https://github.com/SPGoding/datapack-language-server/issues/185))
+- [`09ae2cc`](https://github.com/SPGoding/datapack-language-server/commit/09ae2cc)  Support workspace configuration (Issues: [`#171`](https://github.com/SPGoding/datapack-language-server/issues/171))
+- [`98d6075`](https://github.com/SPGoding/datapack-language-server/commit/98d6075)  Finish formatting code 
+
+## 🐛 Bug Fixes
+- [`ec9a4ee`](https://github.com/SPGoding/datapack-language-server/commit/ec9a4ee)  Fix showing errors when typing execute if data (Issues: [`#168`](https://github.com/SPGoding/datapack-language-server/issues/168))
+- [`f3a0b34`](https://github.com/SPGoding/datapack-language-server/commit/f3a0b34)  Fix not triming cache if auto save is disabled (Issues: [`#178`](https://github.com/SPGoding/datapack-language-server/issues/178))
+- [`ca342e1`](https://github.com/SPGoding/datapack-language-server/commit/ca342e1)  Fix &#x27;blue&#x27; is misspelled as &#x27;bule&#x27; (Issues: [`#184`](https://github.com/SPGoding/datapack-language-server/issues/184))
+- [`af3e08e`](https://github.com/SPGoding/datapack-language-server/commit/af3e08e)  Fix freezing for traling data after the value (Issues: [`#176`](https://github.com/SPGoding/datapack-language-server/issues/176))
+- [`f76a502`](https://github.com/SPGoding/datapack-language-server/commit/f76a502)  Fix type of BrewTime in brewing_stand 
+- [`9558a48`](https://github.com/SPGoding/datapack-language-server/commit/9558a48)  Fix not returning errors for illegal omitting (Issues: [`#169`](https://github.com/SPGoding/datapack-language-server/issues/169))
+- [`8019fd6`](https://github.com/SPGoding/datapack-language-server/commit/8019fd6)  Fix parsing empty value in entity selectors (Issues: [`#188`](https://github.com/SPGoding/datapack-language-server/issues/188))
+
 # [v1.9.4](https://github.com/SPGoding/datapack-language-server/compare/v1.9.3...v1.9.4) (2019-11-17)
 
 ## 🐛 Bug Fixes

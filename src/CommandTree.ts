@@ -1,6 +1,4 @@
-import { SaturatedLine } from './types/Line'
 import ArgumentNode from './types/ArgumentNode'
-import ArgumentParser from './parsers/ArgumentParser'
 import BlockArgumentParser from './parsers/BlockArgumentParser'
 import DefinitionDescriptionArgumentParser from './parsers/DefinitionDescriptionArgumentParser'
 import DefinitionIDArgumentParser from './parsers/DefinitionIDArgumentParser'
@@ -28,6 +26,8 @@ import TextComponentArgumentParser from './parsers/TextComponentArgumentParser'
 import TimeArgumentParser from './parsers/TimeArgumentParser'
 import VanillaNbtSchema, { NbtSchema } from './types/VanillaNbtSchema'
 import VectorArgumentParser from './parsers/VectorArgumentParser'
+import CommandTree, { CommandTreeNode, CommandTreeNodeChildren } from './types/CommandTree'
+import CodeSnippetArgumentParser from './parsers/CodeSnippetArgumentParser'
 
 /**
  * Command tree of Minecraft Java Edition 19w41a commands.
@@ -197,7 +197,7 @@ export const VanillaTree: CommandTree = {
                                     parser: new LiteralArgumentParser('color'),
                                     children: {
                                         colors: {
-                                            parser: new LiteralArgumentParser('bule', 'green', 'pink', 'purple', 'red', 'white', 'yellow'),
+                                            parser: new LiteralArgumentParser('blue', 'green', 'pink', 'purple', 'red', 'white', 'yellow'),
                                             executable: true
                                         }
                                     }
@@ -272,7 +272,7 @@ export const VanillaTree: CommandTree = {
                     executable: true,
                     children: {
                         item: {
-                            parser: new ItemArgumentParser(),
+                            parser: new ItemArgumentParser(true, undefined, undefined, true),
                             executable: true,
                             children: {
                                 maxCount: {
@@ -392,7 +392,6 @@ export const VanillaTree: CommandTree = {
                             children: {
                                 path: {
                                     parser: ({ args }) => {
-                                        console.log(args)
                                         const type = getArgOrDefault(args, 2, 'block') as 'block' | 'entity' | 'storage'
                                         if (type === 'entity') {
                                             const entity = getArgOrDefault(args, 1, new Entity()) as Entity
@@ -713,7 +712,7 @@ export const VanillaTree: CommandTree = {
                                             parser: new LiteralArgumentParser('replace'),
                                             children: {
                                                 replacedBlock: {
-                                                    parser: new BlockArgumentParser(true),
+                                                    parser: new BlockArgumentParser(true, undefined, undefined, undefined, true),
                                                     executable: true
                                                 }
                                             }
@@ -1921,6 +1920,11 @@ export const VanillaTree: CommandTree = {
                     }
                 }
             }
+        },
+        snippet: {
+            parser: new CodeSnippetArgumentParser(),
+            permission: 0,
+            executable: true
         }
     },
     comments: {
@@ -2319,7 +2323,7 @@ export const VanillaTree: CommandTree = {
                             children: {
                                 path: {
                                     parser: ({ args }) => {
-                                        const type = args[args.length - 2].data as 'block' | 'entity' | 'storage'
+                                        const type = getArgOrDefault(args, 2, 'block') as 'block' | 'entity' | 'storage' as 'block' | 'entity' | 'storage'
                                         if (type === 'entity') {
                                             const entity = getArgOrDefault(args, 1, new Entity()) as Entity
                                             const anchor = getSchemaAnchor(entity, VanillaNbtSchema)
@@ -2389,7 +2393,7 @@ export const VanillaTree: CommandTree = {
                             parser: new VectorArgumentParser(3),
                             children: {
                                 block: {
-                                    parser: new BlockArgumentParser(true),
+                                    parser: new BlockArgumentParser(true, undefined, undefined, undefined, true),
                                     executable: true,
                                     children: {
                                         subcommand: {
@@ -2409,7 +2413,7 @@ export const VanillaTree: CommandTree = {
                             children: {
                                 path: {
                                     parser: ({ args }) => {
-                                        const type = args[args.length - 2].data as 'block' | 'entity' | 'storage'
+                                        const type = getArgOrDefault(args, 2, 'block') as 'block' | 'entity' | 'storage'
                                         if (type === 'entity') {
                                             const entity = getArgOrDefault(args, 1, new Entity()) as Entity
                                             const anchor = getSchemaAnchor(entity, VanillaNbtSchema)
@@ -2529,68 +2533,6 @@ export function getSchemaAnchor(entity: Entity, schema: NbtSchema) {
 
 export function getArgOrDefault<T>(args: ArgumentNode<T>[], lastIndex: number, fallback: T): T {
     return lastIndex <= args.length ? args[args.length - lastIndex].data : fallback
-}
-
-/**
- * Represent a command tree.
- */
-export interface CommandTree {
-    [path: string]: CommandTreeNodeChildren
-}
-
-/**
- * Represent a node in a command tree.
- */
-export interface CommandTreeNode<T> {
-    /**
-     * An argument parser to parse this argument, or a function which constructs an argument parser.
-     */
-    parser?: ArgumentParser<T> | ((parsedLine: SaturatedLine) => ArgumentParser<T>),
-    /**
-     * The permission level required to perform this node.
-     * @default 2
-     */
-    permission?: 0 | 1 | 2 | 3 | 4,
-    /**
-     * A human-readable description of the current argument.
-     */
-    description?: string,
-    /**
-     * Whether the command executable if it ends with the current node.
-     */
-    executable?: boolean,
-    /**
-     * The children of this tree node.
-     */
-    children?: CommandTreeNodeChildren,
-    /**
-     * Redirect the parsing process to specific node.  
-     * @example
-     * 'commands'
-     * 'execute_subcommand'
-     * 'commands.teleport'
-     */
-    redirect?: string
-    /**
-     * Copy the content of the current node to the specific node and redirect to there.
-     * @example
-     * 'boolean'
-     * 'nbt_holder'
-     */
-    template?: string,
-    /**
-     * An optional function which will be called when the parser finished parsing.  
-     * Can be used to validate the parsed arguments.
-     * @param parsedLine Parsed line.
-     */
-    run?(parsedLine: SaturatedLine): void
-}
-
-/**
- * Represent `children` in a node.
- */
-export interface CommandTreeNodeChildren {
-    [name: string]: CommandTreeNode<any>
 }
 
 /**

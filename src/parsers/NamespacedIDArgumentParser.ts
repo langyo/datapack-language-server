@@ -9,7 +9,6 @@ import ParsingError from '../types/ParsingError'
 import StringReader from '../utils/StringReader'
 import VanillaRegistries, { Registry } from '../types/VanillaRegistries'
 import Manager from '../types/Manager'
-import HashSet from '../types/HashSet'
 
 export default class NamespacedIDArgumentParser extends ArgumentParser<Identity> {
     readonly identity = 'namespacedID'
@@ -23,7 +22,8 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
     constructor(
         private readonly type: string,
         private readonly registries = VanillaRegistries,
-        private readonly allowTag = false
+        private readonly allowTag = false,
+        private readonly isPredicate = false
     ) {
         super()
     }
@@ -71,20 +71,20 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
         }
 
         //#region Completions
-        const namespaces: HashSet = {}
-        const folders: HashSet = {}
-        const files: HashSet = {}
+        const namespaces = new Set<string>()
+        const folders = new Set<string>()
+        const files = new Set<string>()
         if (cursor === reader.cursor) {
             for (const candidate of tagCandidates) {
                 const namespace = candidate.split(':')[0]
                 const paths = candidate.split(':')[1].split('/')
 
-                namespaces[`${Identity.TagSymbol}${namespace}`] = true
-                if (namespace === Identity.DefaultNamespace) {
+                namespaces.add(`${Identity.TagSymbol}${namespace}`)
+                if (namespace === Identity.DefaultNamespace && !this.isPredicate) {
                     if (paths.length >= 2) {
-                        folders[paths[0]] = true
+                        folders.add(paths[0])
                     } else {
-                        files[paths[0]] = true
+                        files.add(paths[0])
                     }
                 }
             }
@@ -92,12 +92,12 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
                 const namespace = candidate.split(':')[0]
                 const paths = candidate.split(':')[1].split('/')
 
-                namespaces[namespace] = true
-                if (namespace === Identity.DefaultNamespace) {
+                namespaces.add(namespace)
+                if (namespace === Identity.DefaultNamespace && !this.isPredicate) {
                     if (paths.length >= 2) {
-                        folders[paths[0]] = true
+                        folders.add(paths[0])
                     } else {
-                        files[paths[0]] = true
+                        files.add(paths[0])
                     }
                 }
             }
@@ -129,6 +129,14 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
             if (reader.peek() === ':') {
                 reader.skip()
                 namespace = path0
+                // if (namespace === Identity.DefaultNamespace && config.lint.omitDefaultNamespace) {
+                //     ans.errors.push(new ParsingError(
+                //         { start, end: reader.cursor },
+                //         'default namespace is preferred to be omitted',
+                //         true,
+                //         DiagnosticSeverity.Warning
+                //     ))
+                // }
                 //#region Completions
                 candidates = candidates
                     .filter(v => v.startsWith(`${namespace}:`))
@@ -138,9 +146,9 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
                         const paths = candidate.split(Identity.Sep)
 
                         if (paths.length >= 2) {
-                            folders[paths[0]] = true
+                            folders.add(paths[0])
                         } else {
-                            files[paths[0]] = true
+                            files.add(paths[0])
                         }
                     }
                 }
@@ -150,6 +158,20 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
                 candidates = candidates
                     .filter(v => v.startsWith(`${Identity.DefaultNamespace}:`))
                     .map(v => v.slice(Identity.DefaultNamespace.length + 1))
+                if (this.isPredicate) {
+                    ans.errors.push(new ParsingError(
+                        { start, end: reader.cursor },
+                        'default namespace cannot be omitted here'
+                    ))
+                }
+                // if (!config.lint.omitDefaultNamespace) {
+                //     ans.errors.push(new ParsingError(
+                //         { start, end: reader.cursor },
+                //         'default namespace is preferred to be kept',
+                //         true,
+                //         DiagnosticSeverity.Warning
+                //     ))
+                // }
             }
             paths.push(path0)
 
@@ -163,9 +185,9 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
                         const candidatePaths = candidate.split(Identity.Sep)
 
                         if (candidatePaths.length - paths.length >= 2) {
-                            folders[candidatePaths[paths.length]] = true
+                            folders.add(candidatePaths[paths.length])
                         } else if (candidatePaths.length - paths.length === 1) {
-                            files[candidatePaths[paths.length]] = true
+                            files.add(candidatePaths[paths.length])
                         }
                     }
                 }
@@ -260,17 +282,17 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
         // namespace -> CompletionItemKind.Module
         // folder -> CompletionItemKind.Folder
         // file -> CompletionItemKind.Field
-        Object.keys(namespaces).forEach(k => void ans.completions.push({
+        namespaces.forEach(k => void ans.completions.push({
             label: k,
             kind: CompletionItemKind.Module,
             commitCharacters: [':']
         }))
-        Object.keys(folders).forEach(k => void ans.completions.push({
+        folders.forEach(k => void ans.completions.push({
             label: k,
             kind: CompletionItemKind.Folder,
             commitCharacters: ['/']
         }))
-        Object.keys(files).forEach(k => void ans.completions.push({
+        files.forEach(k => void ans.completions.push({
             label: k,
             kind: CompletionItemKind.Field,
             commitCharacters: [' ']
@@ -281,7 +303,7 @@ export default class NamespacedIDArgumentParser extends ArgumentParser<Identity>
     }
 
     /* istanbul ignore next: tired of writing tests */
-    private shouldStrictCheck(key: CacheKey, { lint }: Config) {
+    private shouldStrictCheck(key: CacheKey, { lint: lint }: Config) {
         switch (key) {
             case 'advancements':
                 return lint.strictAdvancementCheck
