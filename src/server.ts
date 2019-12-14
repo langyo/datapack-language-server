@@ -2,24 +2,25 @@ import * as fs from 'fs-extra'
 import * as path from 'path'
 import { URI } from 'vscode-uri'
 import { createConnection, ProposedFeatures, TextDocumentSyncKind, Range, FoldingRange, FoldingRangeKind, SignatureInformation, Position, ColorInformation, Color, ColorPresentation, WorkspaceFolder, TextDocumentEdit, TextEdit, FileChangeType, RenameFile, DocumentLink, DocumentHighlight, InitializeResult, DiagnosticSeverity, TextDocument } from 'vscode-languageserver'
-import { getSafeCategory, CacheUnit, CacheFile, ClientCache, combineCache, CacheKey, removeCacheUnit, removeCachePosition, trimCache, getCacheFromChar, isFileType, CachePosition, isNamespacedType, LatestCacheFileVersion } from './types/ClientCache'
-import Config from './types/Config'
+import { getSafeCategory, CacheUnit, CacheFile, ClientCache, combineCache, CacheKey, removeCacheUnit, removeCachePosition, trimCache, getCacheFromChar, isFileType, CachePosition, isNamespacedType, LatestCacheFileVersion, getFromCachedFileTree, setForCachedFileTree, walkInCachedFileTree, delFromCachedFileTree, CachedFileTree } from './types/ClientCache'
+import Config, { VanillaConfig } from './types/Config'
 import ArgumentParserManager from './parsers/ArgumentParserManager'
 import Line, { lineToLintedString } from './types/Line'
 import LineParser from './parsers/LineParser'
 import StringReader from './utils/StringReader'
 import { Files } from 'vscode-languageserver'
 import Identity from './types/Identity'
-import { toLintedString } from './utils/utils'
 
 const connection = createConnection(ProposedFeatures.all)
 const linesOfRel = new Map<string, Line[]>()
 const stringsOfRel = new Map<string, string[]>()
 const lineBreakOfRel = new Map<string, '\n' | '\r\n'>()
 const versionOfRel = new Map<string, number | null>()
+const hasParsedInRealConfigOfRel = new Map<string, boolean | undefined>()
 const configOfRel = new Map<string, Config>()
 
 const manager = new ArgumentParserManager()
+let hasRealConfig = false
 let cacheFile: CacheFile = { cache: {}, files: {}, version: LatestCacheFileVersion }
 let workspaceFolder: WorkspaceFolder | undefined
 let workspaceFolderPath: string | undefined
@@ -35,6 +36,26 @@ connection.onInitialize(async ({ workspaceFolders }) => {
         workspaceFolderPath = Files.uriToFilePath(workspaceFolder.uri) as string
         connection.console.info(`workspaceFolderPath = ${workspaceFolderPath}`)
 
+        dotPath = path.join(workspaceFolderPath as string, '.datapack')
+        cachePath = path.join(dotPath, 'cache.json')
+        dataPath = path.join(workspaceFolderPath as string, 'data')
+
+        connection.console.info(`dotPath = ${dotPath}`)
+        connection.console.info(`cachePath = ${cachePath}`)
+        connection.console.info(`dataPath = ${dataPath}`)
+        if (!fs.pathExistsSync(dotPath)) {
+            fs.mkdirpSync(dotPath)
+        }
+        if (fs.existsSync(cachePath)) {
+            cacheFile = await fs.readJson(cachePath, { encoding: 'utf8' })
+            if (cacheFile.version !== LatestCacheFileVersion) {
+                cacheFile = { cache: {}, files: {}, version: LatestCacheFileVersion }
+            }
+        }
+        await updateCacheFile(cacheFile, workspaceFolderPath as string)
+        saveCacheFile()
+
+        hasRealConfig = true
         return {
             capabilities: {
                 completionProvider: {
@@ -64,6 +85,7 @@ connection.onInitialize(async ({ workspaceFolders }) => {
         } as InitializeResult
     }
 
+    hasRealConfig = true
     return {
         capabilities: {
             completionProvider: {
@@ -81,27 +103,6 @@ connection.onInitialize(async ({ workspaceFolders }) => {
             }
         }
     } as InitializeResult
-})
-
-connection.onInitialized(async () => {
-    dotPath = path.join(workspaceFolderPath as string, '.datapack')
-    cachePath = path.join(dotPath, 'cache.json')
-    dataPath = path.join(workspaceFolderPath as string, 'data')
-
-    connection.console.info(`dotPath = ${dotPath}`)
-    connection.console.info(`cachePath = ${cachePath}`)
-    connection.console.info(`dataPath = ${dataPath}`)
-    if (!fs.pathExistsSync(dotPath)) {
-        fs.mkdirpSync(dotPath)
-    }
-    if (fs.existsSync(cachePath)) {
-        cacheFile = await fs.readJson(cachePath, { encoding: 'utf8' })
-        if (cacheFile.version !== LatestCacheFileVersion) {
-            cacheFile = { cache: {}, files: {}, version: LatestCacheFileVersion }
-        }
-    }
-    await updateCacheFile(cacheFile, workspaceFolderPath as string)
-    saveCacheFile()
 })
 
 setInterval(saveCacheFile, 30000)
@@ -149,13 +150,13 @@ const cacheFileOperations = {
                 parseString(string, lines, config)
             }
         }
-        let cacheOfLines: ClientCache = {}
+        const cacheOfLines: ClientCache = {}
         let i = 0
         for (const line of lines) {
-            cacheOfLines = combineCache(cacheOfLines, line.cache, { rel, line: i })
+            combineCache(cacheOfLines, line.cache, { rel, line: i })
             i++
         }
-        cacheFile.cache = combineCache(cacheFile.cache, cacheOfLines)
+        combineCache(cacheFile.cache, cacheOfLines)
     },
     //#endregion
 
@@ -174,15 +175,18 @@ const cacheFileOperations = {
 
     // Hooks.
     fileAdded: async (type: CacheKey, id: Identity) => {
+        // console.log(`Added ${type} ${id}`)
         cacheFileOperations.addDefault(id.toString(), type)
     },
     fileModified: async (rel: string, abs: string, type: CacheKey) => {
+        // console.log(`Modified ${rel} ${type}`)
         if (type === 'functions') {
             cacheFileOperations.removeCachePositionsWith(rel)
             await cacheFileOperations.combineCacheOfLines(rel, abs)
         }
     },
     fileDeleted: (rel: string, type: CacheKey, id: Identity) => {
+        // console.log(`Deleted ${rel} ${type} ${id}`)
         if (type === 'functions') {
             cacheFileOperations.removeCachePositionsWith(rel)
         }
@@ -190,46 +194,46 @@ const cacheFileOperations = {
     }
 }
 
+async function walk(workspaceFolderPath: string, abs: string, cb: (dir: string, rel: string, stat: fs.Stats) => any) {
+    const names = await fs.readdir(abs)
+    await Promise.all(
+        names.map(async name => {
+            const dir = path.join(abs, name)
+            const stat = await fs.stat(dir)
+            if (stat.isDirectory()) {
+                await walk(workspaceFolderPath, dir, cb)
+            } else {
+                const rel = path.relative(workspaceFolderPath, dir)
+                await cb(dir, rel, stat)
+            }
+        })
+    )
+}
+
 async function updateCacheFile(cacheFile: CacheFile, workspaceFolderPath: string) {
-    for (const rel in cacheFile.files) {
+    await walkInCachedFileTree(cacheFile.files, async rel => {
+        // console.log(`Walked ${rel}`)
         const abs = path.join(workspaceFolderPath, rel)
-        const { id, category: key } = await Identity.fromRel(rel)
-        if (!(await fs.pathExists(abs))) {
-            cacheFileOperations.fileDeleted(rel, key, id)
-            delete cacheFile.files[rel]
-        } else {
-            const stat = await fs.stat(abs)
-            const lastModified = stat.mtimeMs
-            const lastUpdated = cacheFile.files[rel]
-            if (lastModified > lastUpdated) {
-                cacheFileOperations.fileModified(rel, abs, key)
-                cacheFile.files[rel] = lastModified
+        const result = Identity.fromRel(rel)
+        if (result) {
+            const { id, category: key } = result
+            if (!(await fs.pathExists(abs))) {
+                cacheFileOperations.fileDeleted(rel, key, id)
+                delFromCachedFileTree(cacheFile.files, rel)
+            } else {
+                const stat = await fs.stat(abs)
+                const lastModified = stat.mtimeMs
+                const lastUpdated = getFromCachedFileTree(cacheFile.files, rel) as number
+                if (lastModified > lastUpdated) {
+                    await cacheFileOperations.fileModified(rel, abs, key)
+                    setForCachedFileTree(cacheFile.files, rel, lastModified)
+                }
             }
         }
-    }
+    }, path.sep)
 
     const promises: Promise<void>[] = []
     const addedFiles: [string, string, CacheKey][] = []
-    const walk = async (abs: string) => {
-        const names = await fs.readdir(abs)
-        await Promise.all(
-            names.map(async name => {
-                const dir = path.join(abs, name)
-                const stat = await fs.stat(dir)
-                if (stat.isDirectory()) {
-                    await walk(dir)
-                } else {
-                    const rel = path.relative(workspaceFolderPath, dir)
-                    const { id, category: key } = await Identity.fromRel(rel)
-                    if (!cacheFile.files[rel]) {
-                        cacheFileOperations.fileAdded(key, id)
-                        cacheFile.files[rel] = stat.mtimeMs
-                        addedFiles.push([rel, dir, key])
-                    }
-                }
-            })
-        )
-    }
     const namespaces = fs.pathExistsSync(dataPath as string) ? await fs.readdir(dataPath as string) : []
     for (const namespace of namespaces) {
         const namespacePath = path.join(dataPath as string, namespace)
@@ -250,7 +254,23 @@ async function updateCacheFile(cacheFile: CacheFile, workspaceFolderPath: string
         ]
         for (const datapackCategoryPath of datapackCategoryPaths) {
             if (await fs.pathExists(datapackCategoryPath)) {
-                promises.push(walk(datapackCategoryPath))
+                promises.push(
+                    walk(
+                        workspaceFolderPath,
+                        datapackCategoryPath,
+                        (dir, rel, stat) => {
+                            const result = Identity.fromRel(rel)
+                            if (result) {
+                                const { id, category: key } = result
+                                if (getFromCachedFileTree(cacheFile.files, rel) === undefined) {
+                                    cacheFileOperations.fileAdded(key, id)
+                                    setForCachedFileTree(cacheFile.files, rel, stat.mtimeMs)
+                                    addedFiles.push([rel, dir, key])
+                                }
+                            }
+                        }
+                    )
+                )
             }
         }
     }
@@ -262,10 +282,11 @@ async function updateCacheFile(cacheFile: CacheFile, workspaceFolderPath: string
     )
 
     trimCache(cacheFile.cache)
+    hasRealConfig = true
 }
 
 function parseString(string: string, lines: Line[], config: Config) {
-    if (string.match(/^\s*$/)) {
+    if (string.match(/^[\s\t]*$/)) {
         lines.push({ args: [], hint: { fix: [], options: [] } })
     } else {
         const parser = new LineParser(false, 'line', undefined, cacheFile.cache, config)
@@ -291,18 +312,24 @@ async function updateDiagnostics(rel: string, uri: string) {
 async function getConfigFromRel(rel: string): Promise<Config> {
     let ans = configOfRel.get(rel)
     if (!ans) {
-        ans = await connection.workspace.getConfiguration({
-            scopeUri: getUriFromRel(rel),
-            section: 'datapackLanguageServer'
-        }) as Config
-        configOfRel.set(rel, ans)
+        if (hasRealConfig) {
+            ans = await connection.workspace.getConfiguration({
+                scopeUri: getUriFromRel(rel),
+                section: 'datapackLanguageServer'
+            }) as Config
+            hasParsedInRealConfigOfRel.set(rel, hasRealConfig)
+            configOfRel.set(rel, ans)
+        } else {
+            return VanillaConfig
+        }
     }
     return ans
 }
 
 async function getLinesFromRel(rel: string): Promise<Line[]> {
     let ans = linesOfRel.get(rel)
-    if (!ans) {
+    if (!ans || (!hasParsedInRealConfigOfRel.get(rel) && hasRealConfig)) {
+        hasParsedInRealConfigOfRel.set(rel, hasRealConfig)
         ans = []
         const config = await getConfigFromRel(rel)
         const strings = stringsOfRel.get(rel) as string[]
@@ -379,21 +406,73 @@ connection.onDidChangeWatchedFiles(async ({ changes }) => {
     for (const { uri, type } of changes) {
         const rel = getRelFromUri(uri)
         const abs = getAbsFromRel(rel)
-        const { category, id } = await Identity.fromRel(rel)
+
+        // connection.console.log(JSON.stringify({ uri, type }))
+        // connection.console.log(rel)
 
         switch (type) {
-            case FileChangeType.Created:
-                cacheFileOperations.fileAdded(category, id)
-                cacheFile.files[rel] = (await fs.stat(abs)).mtimeMs
+            case FileChangeType.Created: {
+                const stat = await fs.stat(abs)
+                if (stat.isDirectory()) {
+                    await walk(
+                        workspaceFolderPath as string,
+                        abs,
+                        async (_dir, rel, stat) => {
+                            const result = Identity.fromRel(rel)
+                            if (result) {
+                                const { category, id, ext } = result
+                                if (Identity.isExtValid(ext, category)) {
+                                    await cacheFileOperations.fileAdded(category, id)
+                                    setForCachedFileTree(cacheFile.files, rel, stat.mtimeMs)
+                                }
+                            }
+                        }
+                    )
+                } else {
+                    const result = Identity.fromRel(rel)
+                    if (result) {
+                        const { category, id, ext } = result
+                        if (Identity.isExtValid(ext, category)) {
+                            await cacheFileOperations.fileAdded(category, id)
+                            setForCachedFileTree(cacheFile.files, rel, stat.mtimeMs)
+                        }
+                    }
+                }
                 break
-            case FileChangeType.Changed:
-                cacheFileOperations.fileModified(rel, abs, category)
-                cacheFile.files[rel] = (await fs.stat(abs)).mtimeMs
+            }
+            case FileChangeType.Changed: {
+                const stat = await fs.stat(abs)
+                if (!stat.isDirectory()) {
+                    const result = Identity.fromRel(rel)
+                    if (result) {
+                        const { category, ext } = result
+                        if (Identity.isExtValid(ext, category)) {
+                            await cacheFileOperations.fileModified(rel, abs, category)
+                            setForCachedFileTree(cacheFile.files, rel, stat.mtimeMs)
+                        }
+                    }
+                }
                 break
+            }
             case FileChangeType.Deleted:
-            default:
-                cacheFileOperations.fileDeleted(rel, category, id)
+            default: {
+                await walkInCachedFileTree(
+                    getFromCachedFileTree(cacheFile.files, rel) as CachedFileTree,
+                    subRel => {
+                        subRel = `${rel}${path.sep}${subRel}`
+                        const result = Identity.fromRel(subRel)
+                        if (result) {
+                            const { category, id, ext } = result
+                            if (Identity.isExtValid(ext, category)) {
+                                cacheFileOperations.fileDeleted(subRel, category, id)
+                                delFromCachedFileTree(cacheFile.files, subRel)
+                            }
+                        }
+                    },
+                    path.sep
+                )
                 break
+            }
         }
     }
 
@@ -658,9 +737,10 @@ connection.onRenameRequest(async ({ textDocument: { uri }, position: { line: num
                     const newUri = getUriFromRel(newRel)
                     documentChanges.push(RenameFile.create(oldUri, newUri, { ignoreIfExists: true }))
                     // Update cache.
-                    if (cacheFile.files[oldRel] !== undefined) {
-                        cacheFile.files[newRel] = cacheFile.files[oldRel]
-                        delete cacheFile.files[oldRel]
+                    const oldTimestamp = getFromCachedFileTree(cacheFile.files, oldRel) as number
+                    if (oldTimestamp !== undefined) {
+                        setForCachedFileTree(cacheFile.files, newRel, oldTimestamp)
+                        delFromCachedFileTree(cacheFile.files, oldRel)
                     }
                 }
 
@@ -698,20 +778,16 @@ connection.onDocumentLinks(async ({ textDocument: { uri } }) => {
                 const category = cache[type]
                 for (const id in category) {
                     if (category.hasOwnProperty(id)) {
-                        try {
-                            const toLink = (v: CachePosition) => ({
-                                range: {
-                                    start: { line: i, character: v.start },
-                                    end: { line: i, character: v.end }
-                                },
-                                target: getUriFromRel(Identity.fromString(id).toRel(type))
-                            })
-                            const unit = category[id] as CacheUnit
-                            ans.push(...unit.def.map(toLink))
-                            ans.push(...unit.ref.map(toLink))
-                        } catch (ignored) {
-                            continue
-                        }
+                        const toLink = (v: CachePosition) => ({
+                            range: {
+                                start: { line: i, character: v.start },
+                                end: { line: i, character: v.end }
+                            },
+                            target: getUriFromRel(Identity.fromString(id).toRel(type))
+                        })
+                        const unit = category[id] as CacheUnit
+                        ans.push(...unit.def.map(toLink))
+                        ans.push(...unit.ref.map(toLink))
                     }
                 }
             }

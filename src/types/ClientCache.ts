@@ -1,14 +1,83 @@
 import TextRange from './TextRange'
 import { CompletionItem, MarkupKind } from 'vscode-languageserver'
 
-export const LatestCacheFileVersion = 2
+export const LatestCacheFileVersion = 3
 
 export interface CacheFile {
     cache: ClientCache,
-    files: {
-        [rel: string]: number
-    }
+    files: CachedFileTree
     version: number
+}
+
+export type CachedFileTree = {
+    [rel: string]: number | CachedFileTree
+}
+
+export function getFromCachedFileTree(tree: CachedFileTree, rel: string) {
+    const segments = rel.split(/[\\/]/)
+    let currentValue: number | CachedFileTree = tree
+    for (const seg of segments) {
+        if (typeof currentValue === 'object' && currentValue[seg] !== undefined) {
+            currentValue = currentValue[seg]
+        } else {
+            return undefined
+        }
+    }
+    return currentValue
+}
+
+export function setForCachedFileTree(tree: CachedFileTree, rel: string, timestamp: number) {
+    const segments = rel.split(/[\\/]/)
+    let files: CachedFileTree = tree
+    for (let i = 0; i < segments.length; i++) {
+        const seg = segments[i]
+        if (i !== segments.length - 1) {
+            if (typeof files[seg] !== 'object') {
+                files[seg] = {}
+            }
+            files = files[seg] as CachedFileTree
+        } else {
+            files[seg] = timestamp
+        }
+    }
+}
+
+export function delFromCachedFileTree(tree: CachedFileTree, rel: string) {
+    const segments = rel.split(/[\\/]/)
+    const files: CachedFileTree = tree
+    const del = (val: number | CachedFileTree) => {
+        const seg = segments.shift() as string
+        const obj = val as CachedFileTree
+        if (segments.length >= 2) {
+            del(obj[seg])
+            if (Object.keys(obj[seg]).length === 0) {
+                delete obj[seg]
+            }
+        } else {
+            delete obj[seg]
+        }
+    }
+    del(files[segments.shift() as string])
+}
+
+export async function walkInCachedFileTree(tree: CachedFileTree, cb: (rel: string) => any, sep: '/' | '\\') {
+    const files = tree
+    const walk = async (former: string, tree: CachedFileTree) => {
+        for (const seg in tree) {
+            /* istanbul ignore next */
+            if (tree.hasOwnProperty(seg)) {
+                const element = tree[seg]
+                if (typeof element === 'number') {
+                    const rel = `${former}${seg}`
+                    await cb(rel)
+                } else {
+                    const nextFormer = `${former}${seg}${sep}`
+                    walk(nextFormer, element)
+                }
+            }
+        }
+    }
+    await walk('', files)
 }
 
 /**
@@ -123,7 +192,7 @@ export function removeCacheUnit(cache: ClientCache, type: CacheKey, id: string) 
  * @param override Overriding cache.
  */
 export function combineCache(base: ClientCache = {}, override: ClientCache = {}, addition?: { rel: string, line: number }) {
-    const ans: ClientCache = JSON.parse(JSON.stringify(base))
+    const ans: ClientCache = base
     function initUnit(type: CacheKey, id: string) {
         ans[type] = getSafeCategory(ans, type)
         const ansCategory = ans[type] as CacheCategory
